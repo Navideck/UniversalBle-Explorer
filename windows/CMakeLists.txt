@@ -5,7 +5,7 @@ project(universal_ble_example LANGUAGES CXX)
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application. Must match the CMake project/target name
 # expected by Flutter (e.g. from pubspec name) or TARGET_FILE_DIR references fail.
-set(BINARY_NAME "universal_ble_example")
+set(BINARY_NAME "universal_ble")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
