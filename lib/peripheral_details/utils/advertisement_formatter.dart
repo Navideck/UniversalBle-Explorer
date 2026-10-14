@@ -5,6 +5,7 @@ typedef BleDeviceFieldFormatter = String Function(BleDevice device);
 
 String formatAdvertisementCopyLine(
   BleDevice advertisement, {
+  bool includeRssi = true,
   required AdDateTimeFormatter formatAdTime,
   required BleDeviceFieldFormatter formatCompanyIdentifiers,
   required BleDeviceFieldFormatter formatManufacturerData,
@@ -19,13 +20,16 @@ String formatAdvertisementCopyLine(
   final serviceData = formatServiceData(advertisement);
   final advertisedServices = formatAdvertisedServices(advertisement);
 
-  return 'Time: $time  RSSI: $rssi  Company ID: $companyIdentifiers  '
+  final rssiSegment = includeRssi ? 'RSSI: $rssi  ' : '';
+
+  return 'Time: $time  ${rssiSegment}Company ID: $companyIdentifiers  '
       'Manufacturer Data: $manufacturerData  Service Data: $serviceData  '
       'Advertised Services: $advertisedServices';
 }
 
 String formatAdvertisementsForClipboard(
   Iterable<BleDevice> advertisements, {
+  bool includeRssi = true,
   required AdDateTimeFormatter formatAdTime,
   required BleDeviceFieldFormatter formatCompanyIdentifiers,
   required BleDeviceFieldFormatter formatManufacturerData,
@@ -36,6 +40,7 @@ String formatAdvertisementsForClipboard(
       .map(
         (advertisement) => formatAdvertisementCopyLine(
           advertisement,
+          includeRssi: includeRssi,
           formatAdTime: formatAdTime,
           formatCompanyIdentifiers: formatCompanyIdentifiers,
           formatManufacturerData: formatManufacturerData,

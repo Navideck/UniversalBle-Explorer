@@ -54,6 +54,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   final ScrollController _logsScrollController = ScrollController();
   final Set<String> _favoriteServices = {};
   Set<CharacteristicProperty>? _currentPropertyFilters;
+  bool _includeRssiInAdvertisementCopy = false;
 
   Future<void> _loadFavoriteServices() async {
     final favorites = await StorageService.instance.getFavoriteServices();
@@ -68,6 +69,23 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     await StorageService.instance.setFavoriteServices(
       _favoriteServices.toList(),
     );
+  }
+
+  Future<void> _loadIncludeRssiInAdvertisementCopy() async {
+    final value =
+        await StorageService.instance.getIncludeRssiInAdvertisementCopy();
+    if (mounted) {
+      setState(() {
+        _includeRssiInAdvertisementCopy = value;
+      });
+    }
+  }
+
+  Future<void> _setIncludeRssiInAdvertisementCopy(bool value) async {
+    setState(() {
+      _includeRssiInAdvertisementCopy = value;
+    });
+    await StorageService.instance.setIncludeRssiInAdvertisementCopy(value);
   }
 
   @override
@@ -97,6 +115,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       _handleConnectionChange(state == BleConnectionState.connected);
     });
     _loadFavoriteServices();
+    _loadIncludeRssiInAdvertisementCopy();
   }
 
   @override
@@ -1207,6 +1226,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     if (_receivedAdvertisements.isEmpty) return;
     final text = formatAdvertisementsForClipboard(
       _receivedAdvertisements.reversed,
+      includeRssi: _includeRssiInAdvertisementCopy,
       formatAdTime: _formatAdTime,
       formatCompanyIdentifiers: _formatCompanyIdentifiers,
       formatManufacturerData: _formatManufacturerData,
@@ -1222,6 +1242,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   Future<void> _copyAdvertisement(BleDevice ad) async {
     final line = formatAdvertisementCopyLine(
       ad,
+      includeRssi: _includeRssiInAdvertisementCopy,
       formatAdTime: _formatAdTime,
       formatCompanyIdentifiers: _formatCompanyIdentifiers,
       formatManufacturerData: _formatManufacturerData,
@@ -1232,6 +1253,30 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     if (mounted) {
       _showSnackBar('Advertisement copied to clipboard');
     }
+  }
+
+  Widget _buildIncludeRssiToggle() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelStyle = TextStyle(
+      fontSize: 12,
+      color: colorScheme.onSurface.withValues(alpha: 0.8),
+    );
+    return Row(
+      children: [
+        Icon(
+          Icons.signal_cellular_alt,
+          size: 14,
+          color: colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
+        const SizedBox(width: 6),
+        Text('Include RSSI in copy', style: labelStyle),
+        const Spacer(),
+        Switch(
+          value: _includeRssiInAdvertisementCopy,
+          onChanged: (value) => _setIncludeRssiInAdvertisementCopy(value),
+        ),
+      ],
+    );
   }
 
   Widget _buildReceivedAdvertisements() {
@@ -1290,6 +1335,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                   : Icons.expand_more,
             ),
             children: [
+              if (_receivedAdvertisements.isNotEmpty) _buildIncludeRssiToggle(),
               _receivedAdvertisements.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),

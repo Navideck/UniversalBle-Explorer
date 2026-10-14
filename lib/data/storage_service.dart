@@ -15,4 +15,11 @@ class StorageService {
 
   Future<List<String>> getFavoriteServices() async =>
       (await prefsAsync.getStringList('favorite_services')) ?? [];
+
+  Future<void> setIncludeRssiInAdvertisementCopy(bool value) async {
+    await prefsAsync.setBool('include_rssi_in_advertisement_copy', value);
+  }
+
+  Future<bool> getIncludeRssiInAdvertisementCopy() async =>
+      (await prefsAsync.getBool('include_rssi_in_advertisement_copy')) ?? false;
 }
