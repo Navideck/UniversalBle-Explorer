@@ -55,6 +55,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   final Set<String> _favoriteServices = {};
   Set<CharacteristicProperty>? _currentPropertyFilters;
   bool _includeRssiInAdvertisementCopy = false;
+  bool _autoScrollLogs = true;
 
   Future<void> _loadFavoriteServices() async {
     final favorites = await StorageService.instance.getFavoriteServices();
@@ -88,6 +89,22 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     await StorageService.instance.setIncludeRssiInAdvertisementCopy(value);
   }
 
+  Future<void> _loadAutoScrollLogs() async {
+    final value = await StorageService.instance.getAutoScrollLogs();
+    if (mounted) {
+      setState(() {
+        _autoScrollLogs = value;
+      });
+    }
+  }
+
+  Future<void> _setAutoScrollLogs(bool value) async {
+    setState(() {
+      _autoScrollLogs = value;
+    });
+    await StorageService.instance.setAutoScrollLogs(value);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -116,6 +133,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     });
     _loadFavoriteServices();
     _loadIncludeRssiInAdvertisementCopy();
+    _loadAutoScrollLogs();
   }
 
   @override
@@ -138,6 +156,16 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   void _addLog(String type, dynamic data) {
     setState(() {
       _logs.add('$type: ${data.toString()}');
+    });
+    if (_autoScrollLogs) {
+      _scrollLogsToTop();
+    }
+  }
+
+  void _scrollLogsToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_logsScrollController.hasClients) return;
+      _logsScrollController.jumpTo(0);
     });
   }
 
@@ -2129,6 +2157,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       results: _logs,
       scrollController: _logsScrollController,
       scrollable: scrollable,
+      autoScrollLogs: _autoScrollLogs,
+      onAutoScrollLogsChanged: _setAutoScrollLogs,
       onCopyTap: () async {
         if (_logs.isEmpty) return;
         final logsText = _logs.join('\n');

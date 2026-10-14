@@ -8,12 +8,16 @@ class ResultWidget extends StatelessWidget {
   final ScrollController scrollController;
   final void Function(int? index) onClearTap;
   final void Function()? onCopyTap;
+  final bool autoScrollLogs;
+  final ValueChanged<bool>? onAutoScrollLogsChanged;
   const ResultWidget({
     required this.results,
     required this.onClearTap,
     this.onCopyTap,
     this.scrollable = false,
     required this.scrollController,
+    this.autoScrollLogs = true,
+    this.onAutoScrollLogsChanged,
     super.key,
   });
 
@@ -60,6 +64,25 @@ class ResultWidget extends StatelessWidget {
         copyTooltip: 'Copy all logs',
         onClear: () => onClearTap(null),
         clearTooltip: 'Clear all logs',
+        trailing: onAutoScrollLogsChanged == null
+            ? null
+            : IconButton(
+                icon: Icon(
+                  Icons.vertical_align_top,
+                  color: autoScrollLogs
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.4),
+                  size: 20,
+                ),
+                onPressed: () => onAutoScrollLogsChanged!(!autoScrollLogs),
+                tooltip:
+                    'Auto-scroll to top: ${autoScrollLogs ? "on" : "off"}',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+              ),
       ),
     );
   }

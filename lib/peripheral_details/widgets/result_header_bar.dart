@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Shared header row for result-style cards (e.g. Logs, Received advertisements).
-/// Layout: [icon] [title] [copy?] [Spacer] [count?] [clear?]
+/// Layout: [icon] [title] [copy?] [Spacer] [trailing?] [count?] [clear?]
 /// Copy, count badge, and clear button are shown only when [count] > 0.
 class ResultHeaderBar extends StatelessWidget {
   const ResultHeaderBar({
@@ -13,6 +13,7 @@ class ResultHeaderBar extends StatelessWidget {
     this.copyTooltip = 'Copy',
     this.onClear,
     this.clearTooltip = 'Clear all',
+    this.trailing,
     this.titleFontSize = 16,
   });
 
@@ -23,6 +24,7 @@ class ResultHeaderBar extends StatelessWidget {
   final String copyTooltip;
   final VoidCallback? onClear;
   final String clearTooltip;
+  final Widget? trailing;
   final double titleFontSize;
 
   bool get _hasItems => count > 0;
@@ -64,6 +66,10 @@ class ResultHeaderBar extends StatelessWidget {
           ),
         ],
         const Spacer(),
+        if (trailing != null) ...[
+          trailing!,
+          const SizedBox(width: 4),
+        ],
         if (_hasItems)
           Container(
             padding: const EdgeInsets.symmetric(

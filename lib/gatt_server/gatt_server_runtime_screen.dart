@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:universal_ble/universal_ble.dart';
 import 'package:universal_ble_example/data/gatt_server_storage.dart';
+import 'package:universal_ble_example/data/storage_service.dart';
 import 'package:universal_ble_example/models/gatt_server_config.dart';
 import 'package:universal_ble_example/peripheral_details/widgets/result_widget.dart';
 import 'package:universal_ble_example/widgets/responsive_view.dart';
@@ -25,6 +26,7 @@ class _GattServerRuntimeScreenState extends State<GattServerRuntimeScreen> {
   static const int _maxLogEntries = 500;
   final List<String> _logs = <String>[];
   final ScrollController _logsScrollController = ScrollController();
+  bool _autoScrollLogs = true;
 
   /// Normalized characteristic UUID → central deviceId → display label (name or id).
   final Map<String, Map<String, String>> _subscribersByCharacteristic = {};
@@ -67,9 +69,26 @@ class _GattServerRuntimeScreenState extends State<GattServerRuntimeScreen> {
 
   Future<void> _initialize() async {
     _attachStreams();
+    _loadAutoScrollLogs();
     await _loadConfig();
     _setRequestHandlers();
     await _refreshPeripheralState();
+  }
+
+  Future<void> _loadAutoScrollLogs() async {
+    final value = await StorageService.instance.getAutoScrollLogs();
+    if (mounted) {
+      setState(() {
+        _autoScrollLogs = value;
+      });
+    }
+  }
+
+  Future<void> _setAutoScrollLogs(bool value) async {
+    setState(() {
+      _autoScrollLogs = value;
+    });
+    await StorageService.instance.setAutoScrollLogs(value);
   }
 
   /// Value returned for GATT reads: last notify/indicate payload, else profile initial value.
@@ -213,6 +232,16 @@ class _GattServerRuntimeScreenState extends State<GattServerRuntimeScreen> {
         _logs.removeRange(0, _logs.length - _maxLogEntries);
       }
     });
+    if (_autoScrollLogs) {
+      _scrollLogsToTop();
+    }
+  }
+
+  void _scrollLogsToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_logsScrollController.hasClients) return;
+      _logsScrollController.jumpTo(0);
+    });
   }
 
   Widget _buildResultWidget({required bool scrollable}) {
@@ -220,6 +249,8 @@ class _GattServerRuntimeScreenState extends State<GattServerRuntimeScreen> {
       results: _logs,
       scrollController: _logsScrollController,
       scrollable: scrollable,
+      autoScrollLogs: _autoScrollLogs,
+      onAutoScrollLogsChanged: _setAutoScrollLogs,
       onCopyTap: () async {
         if (_logs.isEmpty) return;
         final logsText = _logs.join('\n');

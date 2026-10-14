@@ -22,4 +22,11 @@ class StorageService {
 
   Future<bool> getIncludeRssiInAdvertisementCopy() async =>
       (await prefsAsync.getBool('include_rssi_in_advertisement_copy')) ?? false;
+
+  Future<void> setAutoScrollLogs(bool value) async {
+    await prefsAsync.setBool('auto_scroll_logs', value);
+  }
+
+  Future<bool> getAutoScrollLogs() async =>
+      (await prefsAsync.getBool('auto_scroll_logs')) ?? true;
 }
