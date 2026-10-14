@@ -134,21 +134,16 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     }
   }
 
-  void _handleValueChange(
-    String deviceId,
-    String characteristicId,
-    Uint8List value,
-    int? timestamp,
-  ) {
-    String data = _formatReadValue(value);
-    DateTime? timestampDateTime = timestamp != null
-        ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+  void _handleValueChange(BleCharacteristicValue update) {
+    String data = _formatReadValue(update.value);
+    DateTime? timestampDateTime = update.timestamp != null
+        ? DateTime.fromMillisecondsSinceEpoch(update.timestamp!)
         : null;
     // Extract hex for debug print (format: (0x...))
     String formattedHex =
-        '(0x${value.map((b) => b.toRadixString(16).padLeft(2, '0')).join()})';
+        '(0x${update.value.map((b) => b.toRadixString(16).padLeft(2, '0')).join()})';
     debugPrint(
-        '_handleValueChange ($timestampDateTime) $characteristicId, $formattedHex');
+        '_handleValueChange ($timestampDateTime) ${update.characteristicId}, $formattedHex');
     _addLog("Value", data);
   }
 
@@ -1151,12 +1146,12 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   static String _formatCompanyIdentifiers(BleDevice device) {
     if (device.manufacturerDataList.isEmpty) return '—';
     final companyService = CompanyIdentifierService.instance;
-    return device.manufacturerDataList
-        .map((d) {
-          final name = companyService.getCompanyName(d.companyId);
-          return name != null ? '${d.companyIdRadix16} ($name)' : d.companyIdRadix16;
-        })
-        .join(', ');
+    return device.manufacturerDataList.map((d) {
+      final name = companyService.getCompanyName(d.companyId);
+      return name != null
+          ? '${d.companyIdRadix16} ($name)'
+          : d.companyIdRadix16;
+    }).join(', ');
   }
 
   static String _formatManufacturerData(BleDevice device) {
@@ -1190,7 +1185,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 12, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+        Icon(icon,
+            size: 12, color: colorScheme.onSurface.withValues(alpha: 0.6)),
         const SizedBox(width: 4),
         SizedBox(
           width: 98,
@@ -1246,199 +1242,195 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         vertical: 2.0,
       ),
       child: Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
           ),
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              dividerColor: Colors.transparent,
+          child: ExpansionTile(
+            initiallyExpanded: _isReceivedAdvertisementsExpanded,
+            onExpansionChanged: (expanded) {
+              setState(() {
+                _isReceivedAdvertisementsExpanded = expanded;
+              });
+            },
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
             ),
-            child: ExpansionTile(
-              initiallyExpanded: _isReceivedAdvertisementsExpanded,
-              onExpansionChanged: (expanded) {
-                setState(() {
-                  _isReceivedAdvertisementsExpanded = expanded;
-                });
-              },
-              tilePadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
-              childrenPadding: const EdgeInsets.only(
-                left: 12,
-                right: 12,
-                bottom: 10,
-              ),
-              title: ResultHeaderBar(
-                icon: Icons.ad_units_outlined,
-                title: 'Received advertisements',
-                count: _receivedAdvertisements.length,
-                onCopy: _receivedAdvertisements.isEmpty
-                    ? null
-                    : _copyReceivedAdvertisements,
-                copyTooltip: 'Copy all advertisements',
-                onClear: _receivedAdvertisements.isEmpty
-                    ? null
-                    : () {
-                        setState(() {
-                          _receivedAdvertisements.clear();
-                        });
-                      },
-                clearTooltip: 'Clear all advertisements',
-                titleFontSize: 18,
-              ),
-              trailing: Icon(
-                _isReceivedAdvertisementsExpanded
-                    ? Icons.expand_less
-                    : Icons.expand_more,
-              ),
-              children: [
-                _receivedAdvertisements.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          'No advertisements yet',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      )
-                    : ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 240),
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: _receivedAdvertisements.length,
-                          separatorBuilder: (context, _) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: Divider(
-                              height: 1,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.2),
-                            ),
-                          ),
-                          itemBuilder: (context, index) {
-                            final ad = _receivedAdvertisements[
-                                _receivedAdvertisements.length - 1 - index];
-                            final ts = ad.timestampDateTime;
-                            final timeStr = ts != null
-                                ? _formatAdTime(ts)
-                                : '—';
-                            final companyIdStr =
-                                _formatCompanyIdentifiers(ad);
-                            final mfrStr = _formatManufacturerData(ad);
-                            final svcStr = _formatServiceData(ad);
-                            final advSvcStr = _formatAdvertisedServices(ad);
-                            final labelStyle = TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
-                            );
-                            final valueStyle = TextStyle(
-                              fontSize: 10,
-                              fontFamily: 'monospace',
-                              color: colorScheme.onSurface
-                                  .withValues(alpha: 0.85),
-                            );
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 3,
-                                horizontal: 4,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _buildAdRow(
-                                          'Time',
-                                          timeStr,
-                                          Icons.schedule,
-                                          labelStyle,
-                                          valueStyle,
-                                          colorScheme,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        _buildAdRow(
-                                          'RSSI',
-                                          ad.rssi?.toString() ?? '—',
-                                          Icons.signal_cellular_alt,
-                                          labelStyle,
-                                          valueStyle,
-                                          colorScheme,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        _buildAdRow(
-                                          'Company ID',
-                                          companyIdStr,
-                                          Icons.business,
-                                          labelStyle,
-                                          valueStyle,
-                                          colorScheme,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        _buildAdRow(
-                                          'Adv. Services',
-                                          advSvcStr,
-                                          Icons.apps,
-                                          labelStyle,
-                                          valueStyle,
-                                          colorScheme,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        _buildAdRow(
-                                          'Mfr Data',
-                                          mfrStr,
-                                          Icons.memory,
-                                          labelStyle,
-                                          valueStyle,
-                                          colorScheme,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        _buildAdRow(
-                                          'Service Data',
-                                          svcStr,
-                                          Icons.list,
-                                          labelStyle,
-                                          valueStyle,
-                                          colorScheme,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.copy),
-                                    iconSize: 18,
-                                    padding: const EdgeInsets.all(4),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 32,
-                                      minHeight: 32,
-                                    ),
-                                    tooltip: 'Copy advertisement',
-                                    onPressed: () => _copyAdvertisement(ad),
-                                    style: IconButton.styleFrom(
-                                      foregroundColor: colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+            childrenPadding: const EdgeInsets.only(
+              left: 12,
+              right: 12,
+              bottom: 10,
+            ),
+            title: ResultHeaderBar(
+              icon: Icons.ad_units_outlined,
+              title: 'Received advertisements',
+              count: _receivedAdvertisements.length,
+              onCopy: _receivedAdvertisements.isEmpty
+                  ? null
+                  : _copyReceivedAdvertisements,
+              copyTooltip: 'Copy all advertisements',
+              onClear: _receivedAdvertisements.isEmpty
+                  ? null
+                  : () {
+                      setState(() {
+                        _receivedAdvertisements.clear();
+                      });
+                    },
+              clearTooltip: 'Clear all advertisements',
+              titleFontSize: 18,
+            ),
+            trailing: Icon(
+              _isReceivedAdvertisementsExpanded
+                  ? Icons.expand_less
+                  : Icons.expand_more,
+            ),
+            children: [
+              _receivedAdvertisements.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(
+                        'No advertisements yet',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
-              ],
-            ),
+                    )
+                  : ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 240),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _receivedAdvertisements.length,
+                        separatorBuilder: (context, _) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Divider(
+                            height: 1,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.2),
+                          ),
+                        ),
+                        itemBuilder: (context, index) {
+                          final ad = _receivedAdvertisements[
+                              _receivedAdvertisements.length - 1 - index];
+                          final ts = ad.timestampDateTime;
+                          final timeStr = ts != null ? _formatAdTime(ts) : '—';
+                          final companyIdStr = _formatCompanyIdentifiers(ad);
+                          final mfrStr = _formatManufacturerData(ad);
+                          final svcStr = _formatServiceData(ad);
+                          final advSvcStr = _formatAdvertisedServices(ad);
+                          final labelStyle = TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          );
+                          final valueStyle = TextStyle(
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.85),
+                          );
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 3,
+                              horizontal: 4,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildAdRow(
+                                        'Time',
+                                        timeStr,
+                                        Icons.schedule,
+                                        labelStyle,
+                                        valueStyle,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      _buildAdRow(
+                                        'RSSI',
+                                        ad.rssi?.toString() ?? '—',
+                                        Icons.signal_cellular_alt,
+                                        labelStyle,
+                                        valueStyle,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      _buildAdRow(
+                                        'Company ID',
+                                        companyIdStr,
+                                        Icons.business,
+                                        labelStyle,
+                                        valueStyle,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      _buildAdRow(
+                                        'Adv. Services',
+                                        advSvcStr,
+                                        Icons.apps,
+                                        labelStyle,
+                                        valueStyle,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      _buildAdRow(
+                                        'Mfr Data',
+                                        mfrStr,
+                                        Icons.memory,
+                                        labelStyle,
+                                        valueStyle,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      _buildAdRow(
+                                        'Service Data',
+                                        svcStr,
+                                        Icons.list,
+                                        labelStyle,
+                                        valueStyle,
+                                        colorScheme,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy),
+                                  iconSize: 18,
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  tooltip: 'Copy advertisement',
+                                  onPressed: () => _copyAdvertisement(ad),
+                                  style: IconButton.styleFrom(
+                                    foregroundColor: colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ],
           ),
         ),
+      ),
     );
   }
 
