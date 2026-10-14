@@ -759,7 +759,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "37bffe830ef5ee0d44775c528c6ca645c178cb38"
+      resolved-ref: "9e08d0d4169329e004041daf4331196e75b889c4"
       url: "https://github.com/Navideck/universal_ble.git"
     source: git
     version: "3.0.0"

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "Navideck" "\0"
-            VALUE "FileDescription", "Universal BLE" "\0"
+            VALUE "FileDescription", "UniversalBle Explorer" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Universal BLE" "\0"
+            VALUE "InternalName", "UniversalBle Explorer" "\0"
             VALUE "LegalCopyright", "Copyright © 2023 com.navideck. All rights reserved." "\0"
             VALUE "OriginalFilename", "universal_ble.exe" "\0"
-            VALUE "ProductName", "Universal BLE" "\0"
+            VALUE "ProductName", "UniversalBle Explorer" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
