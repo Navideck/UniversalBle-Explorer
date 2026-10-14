@@ -165,6 +165,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     }
   }
 
+  void _addCustomLog(String text) => _addLog('Custom', text);
+
   /// Collapses a standard Bluetooth UUID to its short form (e.g. `220A`),
   /// leaving already-short or custom 128-bit UUIDs untouched.
   String _shortUuid(String uuid) {
@@ -2196,6 +2198,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       scrollable: scrollable,
       autoScrollLogs: _autoScrollLogs,
       onAutoScrollLogsChanged: _setAutoScrollLogs,
+      onSubmitCustomLog: _addCustomLog,
       onCopyTap: () async {
         if (_logs.isEmpty) return;
         final logsText = _logs.join('\n');
