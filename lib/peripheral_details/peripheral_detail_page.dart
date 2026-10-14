@@ -153,13 +153,28 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     super.dispose();
   }
 
-  void _addLog(String type, dynamic data) {
+  void _addLog(String type, dynamic data, {String? characteristic}) {
+    final label = (characteristic == null || characteristic.isEmpty)
+        ? ''
+        : ' ${_shortUuid(characteristic)}';
     setState(() {
-      _logs.add('$type: ${data.toString()}');
+      _logs.add('$type$label: ${data.toString()}');
     });
     if (_autoScrollLogs) {
       _scrollLogsToTop();
     }
+  }
+
+  /// Collapses a standard Bluetooth UUID to its short form (e.g. `220A`),
+  /// leaving already-short or custom 128-bit UUIDs untouched.
+  String _shortUuid(String uuid) {
+    final u = uuid.toLowerCase();
+    const suffix = '-0000-1000-8000-00805f9b34fb';
+    if (u.endsWith(suffix)) {
+      final head = u.substring(0, u.length - suffix.length);
+      return (head.startsWith('0000') ? head.substring(4) : head).toUpperCase();
+    }
+    return u.length <= 8 ? u.toUpperCase() : u;
   }
 
   void _scrollLogsToTop() {
@@ -191,7 +206,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         '(0x${update.value.map((b) => b.toRadixString(16).padLeft(2, '0')).join()})';
     debugPrint(
         '_handleValueChange ($timestampDateTime) ${update.characteristicId}, $formattedHex');
-    _addLog("Value", data);
+    _addLog("Value", data, characteristic: update.characteristicId);
   }
 
   void _handlePairingStateChange(bool isPaired) {
@@ -232,7 +247,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         if (kIsWeb) {
           errorMessage.write('\n$webWarning');
         }
-        _addLog("DiscoverServicesError", errorMessage.toString());
+        _addLog("DiscoverServicesError", errorMessage.toString(),
+            characteristic: selectedCharacteristic?.uuid);
       },
     );
 
@@ -279,10 +295,11 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       () async {
         Uint8List value = await selectedCharacteristic.read();
         String data = _formatReadValue(value);
-        _addLog('Read', data);
+        _addLog('Read', data, characteristic: selectedCharacteristic.uuid);
       },
       onError: (error) {
-        _addLog('ReadError', error);
+        _addLog('ReadError', error,
+            characteristic: selectedCharacteristic.uuid);
       },
     );
   }
@@ -299,7 +316,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     try {
       value = Uint8List.fromList(hex.decode(binaryCode.text));
     } catch (e) {
-      _addLog('WriteError', "Error parsing hex $e");
+      _addLog('WriteError', "Error parsing hex $e",
+          characteristic: selectedCharacteristic.uuid);
       return;
     }
 
@@ -316,10 +334,12 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
           value,
           withResponse: writeWithResponse,
         );
-        _addLog('Write${writeWithResponse ? "" : "WithoutResponse"}', value);
+        _addLog('Write${writeWithResponse ? "" : "WithoutResponse"}', value,
+            characteristic: selectedCharacteristic.uuid);
       },
       onError: (error) {
-        _addLog('WriteError', error);
+        _addLog('WriteError', error,
+            characteristic: selectedCharacteristic.uuid);
       },
     );
   }
@@ -337,10 +357,12 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         setState(() {
           _subscribedCharacteristics[selectedCharacteristic.uuid] = true;
         });
-        _addLog('BleCharSubscription', 'Subscribed');
+        _addLog('BleCharSubscription', 'Subscribed',
+            characteristic: selectedCharacteristic.uuid);
       },
       onError: (error) {
-        _addLog('NotifyError', error);
+        _addLog('NotifyError', error,
+            characteristic: selectedCharacteristic.uuid);
       },
     );
   }
@@ -354,10 +376,11 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         setState(() {
           _subscribedCharacteristics.remove(char.uuid);
         });
-        _addLog('BleCharSubscription', 'UnSubscribed');
+        _addLog('BleCharSubscription', 'UnSubscribed',
+            characteristic: char.uuid);
       },
       onError: (error) {
-        _addLog('NotifyError', error);
+        _addLog('NotifyError', error, characteristic: char.uuid);
       },
     );
   }
@@ -391,7 +414,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         );
       },
       onError: (error) {
-        _addLog('SubscribeToAllCharacteristicsError', error);
+        _addLog('SubscribeToAllCharacteristicsError', error,
+            characteristic: selectedCharacteristic?.uuid);
       },
     );
   }
@@ -431,7 +455,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         );
       },
       onError: (error) {
-        _addLog('ReadAllCharacteristicsError', error);
+        _addLog('ReadAllCharacteristicsError', error,
+            characteristic: selectedCharacteristic?.uuid);
       },
     );
   }
@@ -1000,7 +1025,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                                   "Disconnected to disable auto-reconnect");
                             },
                             onError: (error) {
-                              _addLog('DisconnectError', error);
+                              _addLog('DisconnectError', error,
+                                  characteristic: selectedCharacteristic?.uuid);
                             },
                           );
                         } else {
@@ -1013,7 +1039,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                                   "Cleanup performed to prevent auto-reconnect");
                             },
                             onError: (error) {
-                              _addLog('DisconnectError', error);
+                              _addLog('DisconnectError', error,
+                                  characteristic: selectedCharacteristic?.uuid);
                             },
                           );
                         }
@@ -1041,7 +1068,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                       _addLog("DisconnectResult", true);
                     },
                     onError: (error) {
-                      _addLog('DisconnectError', error);
+                      _addLog('DisconnectError', error,
+                          characteristic: selectedCharacteristic?.uuid);
                     },
                   );
                 } else {
@@ -1057,6 +1085,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                       _addLog(
                         'ConnectError (${error.runtimeType})',
                         error,
+                        characteristic: selectedCharacteristic?.uuid,
                       );
                     },
                   );
@@ -1608,7 +1637,9 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                                 int rssi = await bleDevice.readRssi();
                                 _addLog('RSSI', '$rssi dBm');
                               } catch (e) {
-                                _addLog('ReadRssiError (${e.runtimeType})', e);
+                                _addLog('ReadRssiError (${e.runtimeType})', e,
+                                    characteristic:
+                                        selectedCharacteristic?.uuid);
                               }
                             }
                           : null,
@@ -1635,7 +1666,9 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                                     _addLog('MTU', mtu);
                                   },
                                   onError: (error) {
-                                    _addLog('RequestMtuError', error);
+                                    _addLog('RequestMtuError', error,
+                                        characteristic:
+                                            selectedCharacteristic?.uuid);
                                   },
                                 );
                               }
@@ -1663,7 +1696,9 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                                   _addLog("Pairing Result", true);
                                 },
                                 onError: (error) {
-                                  _addLog('PairError', error);
+                                  _addLog('PairError', error,
+                                      characteristic:
+                                          selectedCharacteristic?.uuid);
                                 },
                               );
                             }
@@ -1690,7 +1725,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                             _addLog('isPaired', isPaired);
                           },
                           onError: (error) {
-                            _addLog('isPairedError', error);
+                            _addLog('isPairedError', error,
+                                characteristic: selectedCharacteristic?.uuid);
                           },
                         );
                       },
@@ -1715,7 +1751,8 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                               await bleDevice.unpair();
                             },
                             onError: (error) {
-                              _addLog('UnpairError', error);
+                              _addLog('UnpairError', error,
+                                  characteristic: selectedCharacteristic?.uuid);
                             },
                           );
                         },
