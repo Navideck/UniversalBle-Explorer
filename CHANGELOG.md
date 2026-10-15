@@ -1,6 +1,7 @@
 ## 1.2.0
 * Fix Duplicate keys found error in services list.
 * Show empty service message when there are no characteristics in a service.
+* Filter characteristics by UUID text in the services panel (case- and hyphen-insensitive).
 
 ## 1.1.0
 * **Services & Characteristics:**

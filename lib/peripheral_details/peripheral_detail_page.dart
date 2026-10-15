@@ -54,6 +54,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   final ScrollController _logsScrollController = ScrollController();
   final Set<String> _favoriteServices = {};
   Set<CharacteristicProperty>? _currentPropertyFilters;
+  String _currentCharacteristicQuery = '';
   bool _includeRssiInAdvertisementCopy = false;
   bool _autoScrollLogs = true;
 
@@ -501,9 +502,11 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
             selectedService: selectedService,
             selectedCharacteristic: selectedCharacteristic,
             initialPropertyFilters: _currentPropertyFilters,
+            initialCharacteristicQuery: _currentCharacteristicQuery,
             isDiscoveringServices: _isDiscoveringServices,
             serviceListBuilder:
-                (propertyFilters, listKey, isDiscoveringServices) =>
+                (propertyFilters, characteristicQuery, listKey,
+                        isDiscoveringServices) =>
                     _buildServicesList(
               onSelect: (service, characteristic) {
                 setState(() {
@@ -513,6 +516,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                 Navigator.pop(context);
               },
               propertyFilters: propertyFilters,
+              characteristicQuery: characteristicQuery,
               listKey: listKey,
               isDiscoveringServices: isDiscoveringServices,
             ),
@@ -525,6 +529,11 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
             onPropertyFiltersChanged: (propertyFilters) {
               setState(() {
                 _currentPropertyFilters = propertyFilters;
+              });
+            },
+            onCharacteristicQueryChanged: (query) {
+              setState(() {
+                _currentCharacteristicQuery = query;
               });
             },
             onCopyServices: discoveredServices.isNotEmpty
@@ -649,11 +658,14 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                     selectedService: selectedService,
                     selectedCharacteristic: selectedCharacteristic,
                     initialPropertyFilters: _currentPropertyFilters,
+                    initialCharacteristicQuery: _currentCharacteristicQuery,
                     isDiscoveringServices: _isDiscoveringServices,
                     serviceListBuilder:
-                        (propertyFilters, listKey, isDiscoveringServices) =>
+                        (propertyFilters, characteristicQuery, listKey,
+                                isDiscoveringServices) =>
                             _buildServicesList(
                       propertyFilters: propertyFilters,
+                      characteristicQuery: characteristicQuery,
                       listKey: listKey,
                       isDiscoveringServices: isDiscoveringServices,
                     ),
@@ -666,6 +678,11 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                     onPropertyFiltersChanged: (propertyFilters) {
                       setState(() {
                         _currentPropertyFilters = propertyFilters;
+                      });
+                    },
+                    onCharacteristicQueryChanged: (query) {
+                      setState(() {
+                        _currentCharacteristicQuery = query;
                       });
                     },
                     onCopyServices: discoveredServices.isNotEmpty
@@ -1894,6 +1911,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   Widget _buildServicesList({
     Function(BleService, BleCharacteristic?)? onSelect,
     Set<CharacteristicProperty>? propertyFilters,
+    String? characteristicQuery,
     GlobalKey<ServicesListWidgetState>? listKey,
     bool isDiscoveringServices = false,
   }) {
@@ -1906,6 +1924,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       subscribedCharacteristics: _subscribedCharacteristics,
       scrollable: true,
       propertyFilters: propertyFilters,
+      characteristicQuery: characteristicQuery,
       isDiscoveringServices: isDiscoveringServices,
       onTap: (service, characteristic) {
         setState(() {
@@ -1936,6 +1955,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       discoveredServices,
       favoriteServices: _favoriteServices,
       propertyFilters: _currentPropertyFilters,
+      characteristicQuery: _currentCharacteristicQuery,
     );
   }
 

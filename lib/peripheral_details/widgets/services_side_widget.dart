@@ -6,6 +6,7 @@ import 'services_list_widget.dart';
 class ServicesSideWidget extends StatefulWidget {
   final List<BleService> discoveredServices;
   final Function(Set<CharacteristicProperty>? selectedProperties,
+      String characteristicQuery,
       GlobalKey<ServicesListWidgetState>? listKey, bool isDiscoveringServices)
       serviceListBuilder;
   final VoidCallback? onCopyServices;
@@ -16,6 +17,8 @@ class ServicesSideWidget extends StatefulWidget {
   final Function(Set<CharacteristicProperty>? propertyFilters)?
       onPropertyFiltersChanged;
   final Set<CharacteristicProperty>? initialPropertyFilters;
+  final Function(String query)? onCharacteristicQueryChanged;
+  final String? initialCharacteristicQuery;
   final bool isDiscoveringServices;
   const ServicesSideWidget({
     super.key,
@@ -27,6 +30,8 @@ class ServicesSideWidget extends StatefulWidget {
     this.onCharacteristicSelected,
     this.onPropertyFiltersChanged,
     this.initialPropertyFilters,
+    this.onCharacteristicQueryChanged,
+    this.initialCharacteristicQuery,
     this.isDiscoveringServices = false,
   });
 
@@ -36,6 +41,8 @@ class ServicesSideWidget extends StatefulWidget {
 
 class _ServicesSideWidgetState extends State<ServicesSideWidget> {
   late Set<CharacteristicProperty>? _selectedProperties;
+  String _characteristicQuery = '';
+  final TextEditingController _queryController = TextEditingController();
   bool _showFilters = false;
   final GlobalKey<ServicesListWidgetState> _servicesListKey = GlobalKey();
 
@@ -45,6 +52,9 @@ class _ServicesSideWidgetState extends State<ServicesSideWidget> {
     _selectedProperties = widget.initialPropertyFilters != null
         ? Set<CharacteristicProperty>.from(widget.initialPropertyFilters!)
         : null;
+    _characteristicQuery = widget.initialCharacteristicQuery ?? '';
+    _queryController.text = _characteristicQuery;
+    _queryController.addListener(_onQueryChanged);
   }
 
   @override
@@ -60,6 +70,29 @@ class _ServicesSideWidgetState extends State<ServicesSideWidget> {
             : null;
       });
     }
+    // Update the text query if it changed from outside
+    final newQuery = widget.initialCharacteristicQuery ?? '';
+    final oldQuery = oldWidget.initialCharacteristicQuery ?? '';
+    if (newQuery != oldQuery && newQuery != _characteristicQuery) {
+      _characteristicQuery = newQuery;
+      _queryController.text = newQuery;
+    }
+  }
+
+  @override
+  void dispose() {
+    _queryController.removeListener(_onQueryChanged);
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  void _onQueryChanged() {
+    final query = _queryController.text;
+    if (query == _characteristicQuery) return;
+    setState(() {
+      _characteristicQuery = query;
+    });
+    widget.onCharacteristicQueryChanged?.call(query);
   }
 
   void _togglePropertyFilter(CharacteristicProperty property) {
@@ -116,6 +149,56 @@ class _ServicesSideWidgetState extends State<ServicesSideWidget> {
     if (listState == null) return false;
     final filtered = listState.getFilteredCharacteristics();
     return filtered.length > 1;
+  }
+
+  Widget _buildSearchField(ColorScheme colorScheme) {
+    return TextField(
+      controller: _queryController,
+      style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Filter by characteristic UUID',
+        hintStyle: TextStyle(
+          fontSize: 13,
+          color: colorScheme.onSurface.withValues(alpha: 0.5),
+        ),
+        prefixIcon: Icon(
+          Icons.search,
+          size: 18,
+          color: colorScheme.primary,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 36,
+          minHeight: 36,
+        ),
+        suffixIcon: _characteristicQuery.isNotEmpty
+            ? IconButton(
+                icon: Icon(
+                  Icons.clear,
+                  size: 18,
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+                onPressed: _queryController.clear,
+                tooltip: 'Clear',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: colorScheme.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+      ),
+    );
   }
 
   @override
@@ -250,6 +333,8 @@ class _ServicesSideWidgetState extends State<ServicesSideWidget> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                _buildSearchField(colorScheme),
                 if (_showFilters) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -385,7 +470,11 @@ class _ServicesSideWidgetState extends State<ServicesSideWidget> {
                           ),
                   )
                 : widget.serviceListBuilder(
-                    _selectedProperties, _servicesListKey, widget.isDiscoveringServices),
+                    _selectedProperties,
+                    _characteristicQuery,
+                    _servicesListKey,
+                    widget.isDiscoveringServices,
+                  ),
           ),
         ],
       ),

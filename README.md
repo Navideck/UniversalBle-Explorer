@@ -40,6 +40,7 @@ Service & Characteristic Exploration
   GATT discovery — Discover all services and characteristics on connected devices with detailed, human-readable formatting
   Favorite services — Mark services as favorites; they appear first in the list (system services last)
   Property filters — Filter characteristics by property (read, write, notify, indicate, etc.) with visual filter chips
+  Text search — Filter characteristics by UUID text (e.g. "2a19"), matching regardless of case or hyphens
   Navigation — Previous/next buttons to move between characteristics without collapsing the list
   Copy services — Copy the full discovered GATT layout (e.g. for documentation or debugging) from the Services panel header
 

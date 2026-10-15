@@ -13,6 +13,7 @@ class ServicesListWidget extends StatefulWidget {
   final Map<String, bool>? subscribedCharacteristics;
   final void Function(String serviceUuid)? onFavoriteToggle;
   final Set<CharacteristicProperty>? propertyFilters;
+  final String? characteristicQuery;
   final bool isDiscoveringServices;
 
   const ServicesListWidget({
@@ -26,6 +27,7 @@ class ServicesListWidget extends StatefulWidget {
     this.subscribedCharacteristics,
     this.onFavoriteToggle,
     this.propertyFilters,
+    this.characteristicQuery,
     this.isDiscoveringServices = false,
   });
 
@@ -74,6 +76,9 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
         _scrollToSelectedCharacteristic();
       });
     }
+    if (oldWidget.characteristicQuery != widget.characteristicQuery) {
+      _applyQueryExpansion();
+    }
   }
 
   @override
@@ -95,16 +100,19 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
 
     // Create controllers for each service
     final sortedServices = _getSortedServices();
+    final hasQuery = (widget.characteristicQuery?.trim().isNotEmpty ?? false);
     for (var service in sortedServices) {
       final controller = ExpansibleController();
       // Expand if this service contains the selected characteristic
-      if (widget.selectedCharacteristic != null) {
-        final hasSelectedChar = service.characteristics.any(
-          (char) => char.uuid == widget.selectedCharacteristic!.uuid,
-        );
-        if (hasSelectedChar) {
-          controller.expand();
-        }
+      final hasSelectedChar = widget.selectedCharacteristic != null &&
+          service.characteristics.any(
+            (char) => char.uuid == widget.selectedCharacteristic!.uuid,
+          );
+      // Expand services with matches while a text query is active
+      final hasQueryMatch = hasQuery &&
+          _getFilteredCharacteristicsForService(service).isNotEmpty;
+      if (hasSelectedChar || hasQueryMatch) {
+        controller.expand();
       }
       _expandableControllers[service.uuid] = controller;
 
@@ -114,6 +122,19 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
         _characteristicKeys.putIfAbsent(keyId, () => <GlobalKey>[]).add(
               GlobalKey(),
             );
+      }
+    }
+  }
+
+  /// Expands services that have matching characteristics while a text query is
+  /// active, without recreating the existing expansion controllers.
+  void _applyQueryExpansion() {
+    if (widget.characteristicQuery?.trim().isEmpty ?? true) return;
+    for (final service in _getSortedServices()) {
+      final controller = _expandableControllers[service.uuid];
+      if (controller == null) continue;
+      if (_getFilteredCharacteristicsForService(service).isNotEmpty) {
+        controller.expand();
       }
     }
   }
@@ -171,15 +192,21 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
   List<BleCharacteristic> _getFilteredCharacteristicsForService(
     BleService service,
   ) {
-    if (widget.propertyFilters == null || widget.propertyFilters!.isEmpty) {
+    final propertyFilters = widget.propertyFilters;
+    final hasPropertyFilter =
+        propertyFilters != null && propertyFilters.isNotEmpty;
+    final query = widget.characteristicQuery?.trim() ?? '';
+    if (!hasPropertyFilter && query.isEmpty) {
       return service.characteristics;
     }
-    return service.characteristics
-        .where(
-          (characteristic) => characteristic.properties
-              .any((prop) => widget.propertyFilters!.contains(prop)),
-        )
-        .toList();
+    return service.characteristics.where((characteristic) {
+      if (hasPropertyFilter &&
+          !characteristic.properties
+              .any((prop) => propertyFilters.contains(prop))) {
+        return false;
+      }
+      return characteristicMatchesQuery(characteristic, query);
+    }).toList();
   }
 
   Widget _buildEmptyServiceRow(ColorScheme colorScheme) {
@@ -198,6 +225,32 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
     );
   }
 
+  Widget _buildNoMatchesState(ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 48,
+              color: colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No matching characteristics',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Returns a list of all filtered characteristics with their parent services
   List<({BleService service, BleCharacteristic characteristic})>
       getFilteredCharacteristics() {
@@ -205,6 +258,7 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
       widget.discoveredServices,
       favoriteServices: widget.favoriteServices,
       propertyFilters: widget.propertyFilters,
+      characteristicQuery: widget.characteristicQuery,
     );
   }
 
@@ -298,13 +352,22 @@ class ServicesListWidgetState extends State<ServicesListWidget> {
     Color selectedColor,
     Color selectedCharacteristicBackgroundColor,
   ) {
+    final hasQuery = (widget.characteristicQuery?.trim().isNotEmpty ?? false);
+    final visibleServices = hasQuery
+        ? sortedServices
+            .where((s) => _getFilteredCharacteristicsForService(s).isNotEmpty)
+            .toList()
+        : sortedServices;
+    if (hasQuery && visibleServices.isEmpty) {
+      return _buildNoMatchesState(colorScheme);
+    }
     return ListView.builder(
       controller: _scrollController,
       shrinkWrap: !widget.scrollable,
       physics: widget.scrollable ? null : const NeverScrollableScrollPhysics(),
-      itemCount: sortedServices.length,
+      itemCount: visibleServices.length,
       itemBuilder: (BuildContext context, int index) {
-        final service = sortedServices[index];
+        final service = visibleServices[index];
         final isFavorite =
             widget.favoriteServices?.contains(service.uuid) ?? false;
         final isSelected = widget.selectedService?.uuid == service.uuid;

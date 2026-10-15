@@ -33,14 +33,33 @@ List<BleService> sortBleServices(
   return sortedServices;
 }
 
+/// Normalizes a UUID for free-text search by lowercasing it and removing
+/// hyphens and spaces, so e.g. `2a19` matches
+/// `00002a19-0000-1000-8000-00805f9b34fb`.
+String normalizeUuidForSearch(String value) =>
+    value.toLowerCase().replaceAll('-', '').replaceAll(' ', '');
+
+/// Whether [characteristic] matches a free-text [query] on its UUID.
+/// An empty or whitespace-only query matches every characteristic.
+bool characteristicMatchesQuery(
+  BleCharacteristic characteristic,
+  String query,
+) {
+  final normalizedQuery = normalizeUuidForSearch(query.trim());
+  if (normalizedQuery.isEmpty) return true;
+  return normalizeUuidForSearch(characteristic.uuid).contains(normalizedQuery);
+}
+
 /// Returns a list of all filtered characteristics with their parent services.
 /// Services are sorted (favorites first, system services last).
-/// Characteristics are filtered by property filters if provided.
+/// Characteristics are filtered by property filters and/or a free-text UUID
+/// query when provided.
 List<({BleService service, BleCharacteristic characteristic})>
     getFilteredBleCharacteristics(
   List<BleService> services, {
   Set<String>? favoriteServices,
   Set<CharacteristicProperty>? propertyFilters,
+  String? characteristicQuery,
 }) {
   final List<({BleService service, BleCharacteristic characteristic})> result =
       [];
@@ -51,16 +70,21 @@ List<({BleService service, BleCharacteristic characteristic})>
     favoriteServices: favoriteServices,
   );
 
+  final filters = propertyFilters;
+  final query = characteristicQuery?.trim() ?? '';
+
   for (var service in sortedServices) {
     for (var char in service.characteristics) {
       // Filter by properties if filters are selected
-      if (propertyFilters != null && propertyFilters.isNotEmpty) {
-        if (char.properties.any((prop) => propertyFilters.contains(prop))) {
-          result.add((service: service, characteristic: char));
-        }
-      } else {
-        result.add((service: service, characteristic: char));
+      if (filters != null &&
+          filters.isNotEmpty &&
+          !char.properties.any((prop) => filters.contains(prop))) {
+        continue;
       }
+      if (!characteristicMatchesQuery(char, query)) {
+        continue;
+      }
+      result.add((service: service, characteristic: char));
     }
   }
   return result;
