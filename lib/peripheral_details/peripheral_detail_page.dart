@@ -7,8 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:universal_ble/universal_ble.dart';
 import 'package:universal_ble_example/data/storage_service.dart';
 import 'package:universal_ble_example/data/utils.dart';
+import 'package:universal_ble_example/peripheral_details/models/device_fingerprint.dart';
 import 'package:universal_ble_example/peripheral_details/widgets/result_header_bar.dart';
+import 'package:universal_ble_example/peripheral_details/utils/advertisement_consolidator.dart';
 import 'package:universal_ble_example/peripheral_details/utils/advertisement_formatter.dart';
+import 'package:universal_ble_example/peripheral_details/utils/fingerprint_formatter.dart';
 import 'package:universal_ble_example/peripheral_details/utils/services_formatter.dart';
 import 'package:universal_ble_example/peripheral_details/widgets/result_widget.dart';
 import 'package:universal_ble_example/peripheral_details/widgets/services_list_widget.dart';
@@ -57,6 +60,17 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   String _currentCharacteristicQuery = '';
   bool _includeRssiInAdvertisementCopy = false;
   bool _autoScrollLogs = true;
+  bool _isFingerprinting = false;
+  bool _isFingerprintExpanded = true;
+  String _fingerprintProgress = '';
+  DeviceFingerprint? _fingerprint;
+  final List<BleDevice> _fingerprintAdvertisements = [];
+
+  /// Fixed duration over which advertisements are collected for a fingerprint.
+  static const Duration _fingerprintAdWindow = Duration(seconds: 60);
+
+  /// Window during which the device is watched for a rolled identifier.
+  static const Duration _rollingIdWindow = Duration(seconds: 10);
 
   Future<void> _loadFavoriteServices() async {
     final favorites = await StorageService.instance.getFavoriteServices();
@@ -117,6 +131,9 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       if (mounted) {
         setState(() {
           _receivedAdvertisements.add(d);
+          if (_isFingerprinting) {
+            _fingerprintAdvertisements.add(d);
+          }
         });
       }
     });
@@ -225,39 +242,42 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       _isDiscoveringServices = true;
     });
 
-    await _executeWithLoading(
-      () async {
-        var services = await bleDevice.discoverServices(withDescriptors: false);
-        debugPrint('${services.length} services discovered');
-        debugPrint(formatBleServices(services));
-        setState(() {
-          discoveredServices = services;
-        });
+    try {
+      await _executeWithLoading(
+        () async {
+          var services =
+              await bleDevice.discoverServices(withDescriptors: false);
+          debugPrint('${services.length} services discovered');
+          debugPrint(formatBleServices(services));
+          setState(() {
+            discoveredServices = services;
+          });
 
-        // Build log message step-by-step for clarity
-        final StringBuffer logMessage = StringBuffer();
-        logMessage.write('${services.length} services discovered');
-        if (kIsWeb) {
-          logMessage.write(',\n$webWarning');
-        }
-        logMessage.write('\n\n${formatBleServices(services)}');
+          // Build log message step-by-step for clarity
+          final StringBuffer logMessage = StringBuffer();
+          logMessage.write('${services.length} services discovered');
+          if (kIsWeb) {
+            logMessage.write(',\n$webWarning');
+          }
+          logMessage.write('\n\n${formatBleServices(services)}');
 
-        _addLog("DiscoverServices", logMessage.toString());
-      },
-      onError: (error) {
-        final StringBuffer errorMessage = StringBuffer();
-        errorMessage.write(error);
-        if (kIsWeb) {
-          errorMessage.write('\n$webWarning');
-        }
-        _addLog("DiscoverServicesError", errorMessage.toString(),
-            characteristic: selectedCharacteristic?.uuid);
-      },
-    );
-
-    setState(() {
-      _isDiscoveringServices = false;
-    });
+          _addLog("DiscoverServices", logMessage.toString());
+        },
+        onError: (error) {
+          final StringBuffer errorMessage = StringBuffer();
+          errorMessage.write(error);
+          if (kIsWeb) {
+            errorMessage.write('\n$webWarning');
+          }
+          _addLog("DiscoverServicesError", errorMessage.toString(),
+              characteristic: selectedCharacteristic?.uuid);
+        },
+      );
+    } finally {
+      setState(() {
+        _isDiscoveringServices = false;
+      });
+    }
   }
 
   String _formatReadValue(Uint8List value) {
@@ -462,6 +482,247 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
             characteristic: selectedCharacteristic?.uuid);
       },
     );
+  }
+
+  /// Runs the full device fingerprint pipeline: collect advertisements for a
+  /// fixed window, discover services, read all readable characteristics, then
+  /// check whether the device identifier rolls after a reconnection.
+  Future<void> _captureFingerprint() async {
+    if (_isFingerprinting) return;
+
+    setState(() {
+      _isFingerprinting = true;
+      _fingerprint = null;
+      _fingerprintProgress = 'Preparing…';
+      _isFingerprintExpanded = true;
+      _fingerprintAdvertisements
+        ..clear()
+        ..add(bleDevice);
+    });
+    _addLog('Fingerprint', 'Started');
+
+    try {
+      await _fingerprintEnsureScanning();
+      await _fingerprintCollectAdvertisements();
+      await _fingerprintDiscoverServices();
+
+      final reads = await _fingerprintReadAll();
+      final rolling = await _fingerprintRollingIdCheck();
+
+      final fingerprint = DeviceFingerprint(
+        capturedAt: DateTime.now(),
+        name: bleDevice.name,
+        deviceIdBefore: bleDevice.deviceId,
+        deviceIdAfter: rolling.deviceIdAfter,
+        rollingId: rolling.result,
+        rollingIdCandidates: rolling.candidates,
+        totalAdvertisements: _fingerprintAdvertisements.length,
+        advertisements: consolidateAdvertisements(_fingerprintAdvertisements),
+        services: List.of(discoveredServices),
+        reads: reads,
+      );
+
+      setState(() {
+        _fingerprint = fingerprint;
+        _fingerprintProgress = '';
+        _isFingerprinting = false;
+      });
+      _addLog(
+        'Fingerprint',
+        'Completed: ${fingerprint.advertisements.length} unique advertisements, '
+        '${fingerprint.services.length} services, ${fingerprint.reads.length} reads, '
+        'rolling ID ${fingerprint.rollingId.label}',
+      );
+    } catch (e) {
+      setState(() {
+        _fingerprintProgress = '';
+        _isFingerprinting = false;
+      });
+      _addLog('FingerprintError', e);
+    }
+  }
+
+  Future<void> _fingerprintEnsureScanning() async {
+    setState(() {
+      _fingerprintProgress = 'Preparing scan…';
+    });
+    final controller = _scanController;
+    if (controller == null || controller.isScanning) return;
+    try {
+      await controller.startScan();
+    } catch (e) {
+      _addLog('FingerprintScanError', e);
+    }
+  }
+
+  Future<void> _fingerprintCollectAdvertisements() async {
+    final end = DateTime.now().add(_fingerprintAdWindow);
+    while (DateTime.now().isBefore(end)) {
+      if (!mounted) return;
+      final remaining = end.difference(DateTime.now()).inSeconds + 1;
+      setState(() {
+        _fingerprintProgress =
+            'Collecting advertisements… ${remaining}s left '
+            '(${_fingerprintAdvertisements.length} received)';
+      });
+      await Future.delayed(const Duration(seconds: 1));
+    }
+  }
+
+  Future<void> _fingerprintDiscoverServices() async {
+    setState(() {
+      _fingerprintProgress =
+          isConnected ? 'Discovering services…' : 'Connecting…';
+    });
+
+    if (!isConnected) {
+      try {
+        await bleDevice.connect(autoConnect: _autoConnect);
+      } catch (e) {
+        _addLog('FingerprintConnectError', e);
+        return;
+      }
+    }
+
+    // Give an auto-discovery triggered on connect a chance to settle.
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    while (_isDiscoveringServices &&
+        DateTime.now().isBefore(deadline) &&
+        mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (discoveredServices.isEmpty) {
+      setState(() {
+        _fingerprintProgress = 'Discovering services…';
+      });
+      try {
+        await _discoverServices();
+      } catch (e) {
+        _addLog('FingerprintDiscoverError', e);
+      }
+    }
+  }
+
+  Future<List<ReadResult>> _fingerprintReadAll() async {
+    final results = <ReadResult>[];
+    setState(() {
+      _fingerprintProgress = 'Reading all characteristics…';
+    });
+
+    for (final service in discoveredServices) {
+      for (final characteristic in service.characteristics) {
+        if (!characteristic.properties.contains(CharacteristicProperty.read)) {
+          continue;
+        }
+        try {
+          final value = await characteristic.read();
+          final data = _formatReadValue(value);
+          _addLog('ReadAll', '${service.uuid}/${characteristic.uuid}: $data');
+          results.add(ReadResult(
+            serviceUuid: service.uuid,
+            characteristicUuid: characteristic.uuid,
+            value: data,
+          ));
+        } catch (e) {
+          _addLog('ReadAllError', '${service.uuid}/${characteristic.uuid}: $e');
+          results.add(ReadResult(
+            serviceUuid: service.uuid,
+            characteristicUuid: characteristic.uuid,
+            error: e.toString(),
+          ));
+        }
+      }
+    }
+    return results;
+  }
+
+  Future<
+      ({
+        RollingIdResult result,
+        String? deviceIdAfter,
+        List<String> candidates,
+      })> _fingerprintRollingIdCheck() async {
+    final originalId = bleDevice.deviceId;
+    setState(() {
+      _fingerprintProgress = 'Checking for rolling ID…';
+    });
+
+    final candidates = <String>{};
+    StreamSubscription<BleDevice>? probeSubscription;
+    try {
+      probeSubscription = UniversalBle.scanStream.listen((d) {
+        if (d.deviceId != originalId && _looksLikeSameDevice(d)) {
+          candidates.add(d.deviceId);
+        }
+      });
+    } catch (e) {
+      _addLog('FingerprintProbeError', e);
+    }
+
+    bool reconnected = false;
+    try {
+      await bleDevice.disconnect();
+      await Future.delayed(const Duration(seconds: 1));
+      await bleDevice.connect(autoConnect: _autoConnect);
+      reconnected = true;
+    } catch (e) {
+      _addLog('FingerprintReconnectError', e);
+    }
+
+    // Watch briefly for the device reappearing under a different identifier.
+    final end = DateTime.now().add(_rollingIdWindow);
+    while (DateTime.now().isBefore(end)) {
+      if (!mounted) break;
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    await probeSubscription?.cancel();
+
+    final RollingIdResult result;
+    if (candidates.isNotEmpty) {
+      result = RollingIdResult.changed;
+    } else if (reconnected) {
+      result = RollingIdResult.stable;
+    } else {
+      result = RollingIdResult.inconclusive;
+    }
+
+    final sorted = candidates.toList()..sort();
+    return (
+      result: result,
+      deviceIdAfter: bleDevice.deviceId,
+      candidates: sorted,
+    );
+  }
+
+  /// Heuristically decides whether [device] is the same physical device as the
+  /// one this page is tracking, based on name and advertised services.
+  bool _looksLikeSameDevice(BleDevice device) {
+    final name = bleDevice.name;
+    if (name != null && name.isNotEmpty && device.name == name) {
+      return true;
+    }
+    final myServices = bleDevice.services.toSet();
+    if (myServices.isNotEmpty && device.services.any(myServices.contains)) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _copyFingerprint() async {
+    final fingerprint = _fingerprint;
+    if (fingerprint == null) return;
+    final text = formatDeviceFingerprint(
+      fingerprint,
+      formatAdTime: _formatAdTime,
+      formatCompanyIdentifiers: _formatCompanyIdentifiers,
+      formatManufacturerData: _formatManufacturerData,
+      formatServiceData: _formatServiceData,
+      formatAdvertisedServices: _formatAdvertisedServices,
+      formatServices: formatBleServices,
+      includeRssi: _includeRssiInAdvertisementCopy,
+    );
+    await Clipboard.setData(ClipboardData(text: text));
+    _showSnackBar('Device fingerprint copied to clipboard');
   }
 
   CharacteristicSubscription? _getCharacteristicSubscription(
@@ -706,6 +967,9 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
 
                       // Device Actions
                       _buildDeviceActions(),
+
+                      // Device Fingerprint
+                      _buildFingerprint(),
 
                       // Characteristic selector
                       _buildCharacteristicSelector(),
@@ -1555,6 +1819,229 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
       ),
     );
   }
+
+  Widget _buildFingerprint() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final fingerprint = _fingerprint;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 2.0,
+      ),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+          ),
+          child: ExpansionTile(
+            initiallyExpanded: _isFingerprintExpanded,
+            onExpansionChanged: (expanded) {
+              setState(() {
+                _isFingerprintExpanded = expanded;
+              });
+            },
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            childrenPadding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 16,
+            ),
+            leading: Icon(
+              Icons.fingerprint,
+              color: colorScheme.primary,
+              size: 24,
+            ),
+            title: Text(
+              'Device Fingerprint',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            subtitle: !_isFingerprintExpanded
+                ? fingerprint != null
+                    ? Text(
+                        'Rolling ID: ${fingerprint.rollingId.label}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      )
+                    : _isFingerprinting
+                        ? Text(
+                            _fingerprintProgress,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          )
+                        : null
+                : null,
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isFingerprinting ? null : _captureFingerprint,
+                  icon: _isFingerprinting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.fingerprint),
+                  label: Text(
+                    _isFingerprinting
+                        ? 'Capturing…'
+                        : 'Get Device Fingerprint',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              if (_isFingerprinting && _fingerprintProgress.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _fingerprintProgress,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+              if (fingerprint != null) ...[
+                const SizedBox(height: 12),
+                _buildFingerprintSummary(fingerprint),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFingerprintSummary(DeviceFingerprint fingerprint) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final rollingColor = switch (fingerprint.rollingId) {
+      RollingIdResult.stable => Colors.green,
+      RollingIdResult.changed => colorScheme.error,
+      RollingIdResult.inconclusive =>
+        colorScheme.onSurface.withValues(alpha: 0.6),
+    };
+    final readsOk = fingerprint.reads.where((r) => !r.isError).length;
+    final readsFailed = fingerprint.reads.length - readsOk;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: rollingColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: rollingColor.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.autorenew, size: 16, color: rollingColor),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Rolling ID: ${fingerprint.rollingId.label}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: rollingColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow(
+          context,
+          'Captured',
+          _formatFingerprintDateTime(fingerprint.capturedAt),
+          Icons.schedule,
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow(
+          context,
+          'Advertisements',
+          '${fingerprint.advertisements.length} unique / '
+              '${fingerprint.totalAdvertisements} total',
+          Icons.ad_units_outlined,
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow(
+          context,
+          'Services',
+          '${fingerprint.services.length}',
+          Icons.apps,
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow(
+          context,
+          'Reads',
+          '$readsOk ok${readsFailed > 0 ? ', $readsFailed failed' : ''}',
+          Icons.download,
+        ),
+        if (fingerprint.rollingIdCandidates.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildInfoRow(
+            context,
+            'Candidate IDs',
+            fingerprint.rollingIdCandidates.join(', '),
+            Icons.swap_horiz,
+          ),
+        ],
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _copyFingerprint,
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('Copy Fingerprint'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colorScheme.onSurface,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatFingerprintDateTime(DateTime dt) =>
+      '${dt.year.toString().padLeft(4, '0')}-'
+      '${dt.month.toString().padLeft(2, '0')}-'
+      '${dt.day.toString().padLeft(2, '0')} ${_formatAdTime(dt)}';
 
   Widget _buildDeviceActions() {
     final colorScheme = Theme.of(context).colorScheme;

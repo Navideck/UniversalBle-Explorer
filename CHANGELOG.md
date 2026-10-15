@@ -1,3 +1,6 @@
+## Unreleased
+* Add "Get Device Fingerprint": one tap captures advertisements over a 60s window (identical ads consolidated with count, first/last seen and RSSI range), discovered services, all readable characteristic values, and a rolling-ID check performed after reconnecting; the full report can be copied to the clipboard.
+
 ## 1.2.0
 * Fix Duplicate keys found error in services list.
 * Show empty service message when there are no characteristics in a service.

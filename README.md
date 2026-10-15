@@ -59,6 +59,7 @@ Pairing & Security
 Advanced & Developer Options
 
   MTU — Request a larger MTU (e.g. 247) for better throughput where supported
+  Device fingerprint — One tap captures a consolidated device fingerprint: advertisements collected over a 60s window (identical ads collapsed with count, first/last seen and RSSI range), discovered GATT services, all readable characteristic values, and a rolling-ID check that reconnects to detect random/private address changes; copy the full report to the clipboard
   Command queue — Choose queue type in the drawer: Global (single queue), Per Device, or None (parallel)
   Configurable timeout — Set operation timeout (e.g. 10 seconds) for all BLE operations
   Logs — Operation log with copy-all and per-entry clear; comprehensive error handling with detailed codes
