@@ -156,7 +156,7 @@ class ResultWidget extends StatelessWidget {
         vertical: 12,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: SelectableText(
@@ -177,9 +177,10 @@ class ResultWidget extends StatelessWidget {
             ),
             onPressed: () => onClearTap(reversedIndex),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 24,
-              minHeight: 24,
+            style: IconButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(32, 32),
+              maximumSize: const Size(32, 32),
             ),
           ),
         ],

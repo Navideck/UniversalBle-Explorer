@@ -551,18 +551,32 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 ),
                 child: TextField(
                   controller: _searchFilterController,
+                  textAlignVertical: TextAlignVertical.center,
                   decoration: InputDecoration(
+                    isDense: true,
                     hintText: 'Search by name, ID, service, company name/ID',
+                    hintMaxLines: 1,
                     prefixIcon: Icon(
                       Icons.search,
+                      size: 20,
                       color: colorScheme.primary,
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
                     ),
                     suffixIcon: _searchFilterController.text.isNotEmpty
                         ? IconButton(
                             icon: Icon(
                               Icons.clear,
+                              size: 20,
                               color:
                                   colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
                             ),
                             onPressed: () {
                               _searchFilterController.clear();
@@ -571,16 +585,17 @@ class _ScannerScreenState extends State<ScannerScreen> {
                             },
                           )
                         : null,
+                    suffixIconConstraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
                     fillColor: colorScheme.surfaceContainerHighest,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),

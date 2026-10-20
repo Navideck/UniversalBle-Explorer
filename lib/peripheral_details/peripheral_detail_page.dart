@@ -61,6 +61,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   bool _includeRssiInAdvertisementCopy = false;
   bool _autoScrollLogs = true;
   bool _isFingerprinting = false;
+  bool _cancelFingerprintCapture = false;
   bool _isFingerprintExpanded = true;
   String _fingerprintProgress = '';
   DeviceFingerprint? _fingerprint;
@@ -127,27 +128,42 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     _receivedAdvertisements = [bleDevice];
     _advertisementSubscription = UniversalBle.scanStream
         .where((d) => d.deviceId == bleDevice.deviceId)
-        .listen((d) {
-      if (mounted) {
-        setState(() {
-          _receivedAdvertisements.add(d);
-          if (_isFingerprinting) {
-            _fingerprintAdvertisements.add(d);
-          }
-        });
-      }
-    });
+        .listen(
+      (d) {
+        if (mounted) {
+          setState(() {
+            _receivedAdvertisements.add(d);
+            if (_isFingerprinting) {
+              _fingerprintAdvertisements.add(d);
+            }
+          });
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Advertisement stream error: $error');
+      },
+    );
 
     connectionStreamSubscription = bleDevice.connectionStream.listen(
       _handleConnectionChange,
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Connection stream error: $error');
+      },
     );
     pairingStateSubscription = bleDevice.pairingStateStream.listen(
       _handlePairingStateChange,
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Pairing stream error: $error');
+      },
     );
     UniversalBle.onValueChange = _handleValueChange;
 
     bleDevice.connectionState.then((state) {
+      if (!mounted) return;
       _handleConnectionChange(state == BleConnectionState.connected);
+    }).catchError((Object error) {
+      // The device may already be gone (e.g. its identifier rolled).
+      debugPrint('Failed to read initial connection state: $error');
     });
     _loadFavoriteServices();
     _loadIncludeRssiInAdvertisementCopy();
@@ -492,6 +508,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
 
     setState(() {
       _isFingerprinting = true;
+      _cancelFingerprintCapture = false;
       _fingerprint = null;
       _fingerprintProgress = 'Preparing…';
       _isFingerprintExpanded = true;
@@ -503,11 +520,19 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
 
     try {
       await _fingerprintEnsureScanning();
+      if (_cancelFingerprintCapture) return;
+
       await _fingerprintCollectAdvertisements();
+      if (_cancelFingerprintCapture) return;
+
       await _fingerprintDiscoverServices();
+      if (_cancelFingerprintCapture) return;
 
       final reads = await _fingerprintReadAll();
+      if (_cancelFingerprintCapture) return;
+
       final rolling = await _fingerprintRollingIdCheck();
+      if (!mounted || _cancelFingerprintCapture) return;
 
       final fingerprint = DeviceFingerprint(
         capturedAt: DateTime.now(),
@@ -524,8 +549,6 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
 
       setState(() {
         _fingerprint = fingerprint;
-        _fingerprintProgress = '';
-        _isFingerprinting = false;
       });
       _addLog(
         'Fingerprint',
@@ -534,12 +557,28 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
         'rolling ID ${fingerprint.rollingId.label}',
       );
     } catch (e) {
-      setState(() {
-        _fingerprintProgress = '';
-        _isFingerprinting = false;
-      });
       _addLog('FingerprintError', e);
+    } finally {
+      final wasCancelled = _cancelFingerprintCapture;
+      if (mounted) {
+        setState(() {
+          _fingerprintProgress = '';
+          _isFingerprinting = false;
+          _cancelFingerprintCapture = false;
+        });
+      }
+      if (wasCancelled) {
+        _addLog('Fingerprint', 'Cancelled');
+      }
     }
+  }
+
+  void _stopFingerprintCapture() {
+    if (!_isFingerprinting || _cancelFingerprintCapture) return;
+    setState(() {
+      _cancelFingerprintCapture = true;
+      _fingerprintProgress = 'Stopping…';
+    });
   }
 
   Future<void> _fingerprintEnsureScanning() async {
@@ -558,7 +597,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   Future<void> _fingerprintCollectAdvertisements() async {
     final end = DateTime.now().add(_fingerprintAdWindow);
     while (DateTime.now().isBefore(end)) {
-      if (!mounted) return;
+      if (!mounted || _cancelFingerprintCapture) return;
       final remaining = end.difference(DateTime.now()).inSeconds + 1;
       setState(() {
         _fingerprintProgress =
@@ -570,6 +609,7 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
   }
 
   Future<void> _fingerprintDiscoverServices() async {
+    if (_cancelFingerprintCapture) return;
     setState(() {
       _fingerprintProgress =
           isConnected ? 'Discovering services…' : 'Connecting…';
@@ -588,9 +628,11 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     final deadline = DateTime.now().add(const Duration(seconds: 15));
     while (_isDiscoveringServices &&
         DateTime.now().isBefore(deadline) &&
+        !_cancelFingerprintCapture &&
         mounted) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
+    if (_cancelFingerprintCapture) return;
     if (discoveredServices.isEmpty) {
       setState(() {
         _fingerprintProgress = 'Discovering services…';
@@ -610,7 +652,9 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     });
 
     for (final service in discoveredServices) {
+      if (_cancelFingerprintCapture) break;
       for (final characteristic in service.characteristics) {
+        if (_cancelFingerprintCapture) break;
         if (!characteristic.properties.contains(CharacteristicProperty.read)) {
           continue;
         }
@@ -650,28 +694,37 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     final candidates = <String>{};
     StreamSubscription<BleDevice>? probeSubscription;
     try {
-      probeSubscription = UniversalBle.scanStream.listen((d) {
-        if (d.deviceId != originalId && _looksLikeSameDevice(d)) {
-          candidates.add(d.deviceId);
-        }
-      });
+      probeSubscription = UniversalBle.scanStream.listen(
+        (d) {
+          if (d.deviceId != originalId && _looksLikeSameDevice(d)) {
+            candidates.add(d.deviceId);
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          _addLog('FingerprintProbeError', error);
+        },
+      );
     } catch (e) {
       _addLog('FingerprintProbeError', e);
     }
 
     bool reconnected = false;
-    try {
-      await bleDevice.disconnect();
-      await Future.delayed(const Duration(seconds: 1));
-      await bleDevice.connect(autoConnect: _autoConnect);
-      reconnected = true;
-    } catch (e) {
-      _addLog('FingerprintReconnectError', e);
+    if (!_cancelFingerprintCapture) {
+      try {
+        await bleDevice.disconnect();
+        await Future.delayed(const Duration(seconds: 1));
+        if (!_cancelFingerprintCapture) {
+          await bleDevice.connect(autoConnect: _autoConnect);
+          reconnected = true;
+        }
+      } catch (e) {
+        _addLog('FingerprintReconnectError', e);
+      }
     }
 
     // Watch briefly for the device reappearing under a different identifier.
     final end = DateTime.now().add(_rollingIdWindow);
-    while (DateTime.now().isBefore(end)) {
+    while (DateTime.now().isBefore(end) && !_cancelFingerprintCapture) {
       if (!mounted) break;
       await Future.delayed(const Duration(seconds: 1));
     }
@@ -737,15 +790,21 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
     return null;
   }
 
-  Future<T> _executeWithLoading<T>(
+  Future<T?> _executeWithLoading<T>(
     Future<T> Function() action, {
     Function(dynamic error)? onError,
   }) async {
     try {
       return await action();
     } catch (e) {
-      onError?.call(e);
-      rethrow;
+      // Errors are reported through [onError]; never let them escape as
+      // unhandled async errors (e.g. a device disappearing mid-operation).
+      if (onError != null) {
+        onError(e);
+      } else {
+        debugPrint('BLE operation failed: $e');
+      }
+      return null;
     }
   }
 
@@ -1134,28 +1193,26 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                             ),
                           ),
                         ),
-                        Expanded(
-                          flex: 1,
-                          child: ElevatedButton.icon(
-                            onPressed: isConnected &&
-                                    _hasSelectedCharacteristicProperty([
-                                      CharacteristicProperty.write,
-                                      CharacteristicProperty
-                                          .writeWithoutResponse,
-                                    ])
-                                ? _writeValue
-                                : null,
-                            icon: const Icon(Icons.send),
-                            label: const Text('Write'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        ElevatedButton.icon(
+                          onPressed: isConnected &&
+                                  _hasSelectedCharacteristicProperty([
+                                    CharacteristicProperty.write,
+                                    CharacteristicProperty
+                                        .writeWithoutResponse,
+                                  ])
+                              ? _writeValue
+                              : null,
+                          icon: const Icon(Icons.send),
+                          label: const Text('Write'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
@@ -1667,13 +1724,13 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
                       });
                     },
               clearTooltip: 'Clear all advertisements',
-              titleFontSize: 18,
+              trailing: Icon(
+                _isReceivedAdvertisementsExpanded
+                    ? Icons.expand_less
+                    : Icons.expand_more,
+              ),
             ),
-            trailing: Icon(
-              _isReceivedAdvertisementsExpanded
-                  ? Icons.expand_less
-                  : Icons.expand_more,
-            ),
+            showTrailingIcon: false,
             children: [
               if (_receivedAdvertisements.isNotEmpty) _buildIncludeRssiToggle(),
               _receivedAdvertisements.isEmpty
@@ -1891,22 +1948,24 @@ class _PeripheralDetailPageState extends State<PeripheralDetailPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _isFingerprinting ? null : _captureFingerprint,
-                  icon: _isFingerprinting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.fingerprint),
-                  label: Text(
+                  onPressed: _isFingerprinting
+                      ? _stopFingerprintCapture
+                      : _captureFingerprint,
+                  icon: Icon(
                     _isFingerprinting
-                        ? 'Capturing…'
-                        : 'Get Device Fingerprint',
+                        ? Icons.stop_circle
+                        : Icons.fingerprint,
+                  ),
+                  label: Text(
+                    _isFingerprinting ? 'Stop' : 'Get Device Fingerprint',
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
+                    backgroundColor: _isFingerprinting
+                        ? colorScheme.error
+                        : colorScheme.primary,
+                    foregroundColor: _isFingerprinting
+                        ? colorScheme.onError
+                        : colorScheme.onPrimary,
                     padding: const EdgeInsets.symmetric(
                       vertical: 14,
                     ),

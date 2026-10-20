@@ -54,7 +54,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Universal BLE',
+                      'UniversalBle Explorer',
                       maxLines: 2,
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
