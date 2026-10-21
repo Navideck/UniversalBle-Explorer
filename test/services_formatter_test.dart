@@ -13,7 +13,7 @@ void main() {
 
       expect(
         formatted,
-        contains('Service: 0000180a-0000-1000-8000-00805f9b34fb'),
+        contains('Discovered Services: 0000180a-0000-1000-8000-00805f9b34fb'),
       );
       expect(formatted, contains('The service is empty'));
     });
@@ -38,7 +38,7 @@ void main() {
 
       expect(
         formatted,
-        contains('Service: 0000180a-0000-1000-8000-00805f9b34fb'),
+        contains('Discovered Services: 0000180a-0000-1000-8000-00805f9b34fb'),
       );
       expect(
         formatted,
