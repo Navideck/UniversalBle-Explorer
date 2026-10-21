@@ -36,7 +36,7 @@ class UniversalBleApp extends StatelessWidget {
     return ScanControllerScope(
       controller: scanController,
       child: MaterialApp(
-      title: 'Universal BLE',
+      title: 'UniversalBle Explorer',
       debugShowCheckedModeBanner: false,
       locale: locale,
       builder: builder,

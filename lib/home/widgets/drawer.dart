@@ -153,7 +153,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 icon: const Icon(Icons.info_outline),
                 applicationIcon:
                     Image.asset('assets/icon.png', width: 40, height: 40),
-                applicationName: 'Universal BLE',
+                applicationName: 'UniversalBle Explorer',
                 applicationVersion:
                     "${snapshot.data?.version} (${snapshot.data?.buildNumber})",
                 applicationLegalese: '\u{a9} 2023 Navideck',
@@ -164,7 +164,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     text: TextSpan(
                       style: bodyStyle,
                       children: [
-                        const TextSpan(text: "Universal BLE is "),
+                        const TextSpan(text: "UniversalBle Explorer is "),
                         TextSpan(
                           text: 'open source',
                           style: linkStyle,
