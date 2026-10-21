@@ -1,0 +1,81 @@
+# UniversalBle Explorer — Store Description (1.2.0)
+
+Store-ready copy based on the 1.1.0 and 1.2.0 release notes.
+
+## Google Play
+
+### Short description (68/80 characters)
+
+BLE scanner, GATT server, fingerprints and live logs for developers.
+
+### Full description (2,860/4,000 characters)
+
+UniversalBle Explorer (formerly Universal BLE) is an open-source developer tool for discovering, connecting to and debugging Bluetooth Low Energy devices. Built on the universal_ble Flutter plugin, it offers a consistent experience across Android, iOS, macOS, Windows, Linux and the web.
+
+SCAN & DISCOVER
+• Real-time scanning with a prominent scan button and a Start Scan prompt when no devices are found
+• Filter by service UUIDs, name prefix or manufacturer data, with saved presets that persist between sessions
+• Search devices by name or company name, resolved from Bluetooth SIG company identifiers
+• Sort by RSSI, last seen or name
+• View RSSI, the last advertisement and a live advertisement list that flashes as new packets arrive
+• Scanning continues while you inspect a device
+• Inspect devices already connected at system level on supported platforms
+
+CONNECT
+• One-tap connect and disconnect with live connection state
+• Optional autoConnect for automatic reconnection
+• Multiple simultaneous connections
+
+SERVICES & CHARACTERISTICS
+• Full GATT discovery with clear, human-readable output
+• Favorite services first, system services last
+• Property filter chips for read, write, notify, indicate and more
+• Text search by characteristic UUID, ignoring case and hyphens
+• Previous/next navigation between characteristics
+• Copy the complete service layout from the panel header
+
+READ, WRITE & SUBSCRIBE
+• Read characteristic values on demand
+• Write with or without response
+• Subscribe to notifications and indications, individually or for all at once
+• Live values in the log with timestamps
+
+GATT SERVER
+• Create, edit and manage GATT server profiles with services and characteristics
+• Run a peripheral server with advertising
+• Add or remove services at runtime
+• Import and export profiles as JSON
+
+DEVICE FINGERPRINT
+• Capture a complete fingerprint in one tap: 60 seconds of consolidated advertisements, discovered services, all readable values and a rolling-ID check after reconnecting
+• Copy the full report or stop the capture at any time
+
+LOGS & DIAGNOSTICS
+• Add custom log entries and clear individual entries
+• Auto-scroll to the newest entry, with a persisted toggle
+• Characteristic UUIDs included on read, write and error entries
+• Copy advertisements with an optional RSSI column
+• Detailed error codes and a configurable operation timeout
+
+POWER USER TOOLS
+• Command queue: Global, Per Device, Auto or None
+• Request a larger MTU for higher throughput
+• Pair and unpair devices with live pairing state
+• Guided permission flow and Bluetooth availability indicator
+
+BUILT FOR DEVELOPERS
+Whether you are building a BLE product, testing hardware, validating firmware or learning Bluetooth Low Energy, UniversalBle Explorer gives you the visibility and control you need. It is free, open source and built on the universal_ble plugin.
+
+## App Store
+
+### Subtitle (27/30 characters)
+
+BLE explorer, server & logs
+
+### Promotional text (153/170 characters)
+
+Now with a full GATT server and one-tap device fingerprints. Explore, connect and debug BLE devices with live logs, filters and powerful developer tools.
+
+### Description (4,000 characters max)
+
+Use the Google Play full description above; it fits the App Store limit as well.
