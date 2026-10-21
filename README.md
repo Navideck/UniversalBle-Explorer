@@ -9,7 +9,7 @@ Scanner app screenshot: assets/scanner-screenshot.png
 
 Download
 
-Universal BLE — [App Store](https://apps.apple.com/app/id6756538573) · [Play Store](https://play.google.com/store/apps/details?id=com.navideck.universalble) · [Web](https://navideck.github.io/universal-ble)
+Universal BLE — [App Store](https://apps.apple.com/app/id6756538573) · [Play Store](https://play.google.com/store/apps/details?id=com.navideck.universalble) · [Web](https://navideck.github.io/UniversalBle-Explorer/)
 
 <a href="https://apps.apple.com/app/id6756538573"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store"></a>
 <a href="https://play.google.com/store/apps/details?id=com.navideck.universalble"><img src="assets/play-badge.svg" alt="Get it on Google Play" height="40"></a>
