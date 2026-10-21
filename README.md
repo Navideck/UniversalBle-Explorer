@@ -1,8 +1,8 @@
-UniversalBle Explorer
+**UniversalBle Explorer**
 
 UniversalBle Explorer is an open-source developer tool for exploring and testing Bluetooth Low Energy (BLE) devices. It empowers developers, engineers, and hobbyists to discover, connect, and debug BLE devices with a consistent cross-platform experience.
 
-Built on the universal_ble Flutter plugin (https://pub.dev/packages/universal_ble) — one of the most comprehensive cross-platform BLE solutions available.
+Built on the [universal_ble](https://pub.dev/packages/universal_ble) Flutter plugin — one of the most comprehensive cross-platform BLE solutions available.
 
 Scanner app screenshot: assets/scanner-screenshot.png
 
