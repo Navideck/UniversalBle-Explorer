@@ -106792,10 +106792,10 @@ r=q?m:r.d
 q=A.yU(m,-1,m)
 q.P=new A.avs()
 o=t.VO
-q=A.TZ(m,m,m,B.bs,m,m,!0,m,A.dB(A.b([B.a_l,A.dB(m,m,m,m,m,q,m,m,m,s,"open source"),B.a_j],o),m,m,m,m,m,m,m,m,j,m),B.e6,m,m,B.af,B.ar)
+q=A.TZ(m,m,m,B.bs,m,m,!0,m,A.dB(A.b([B.a_k,A.dB(m,m,m,m,m,q,m,m,m,s,"open source"),B.a_j],o),m,m,m,m,m,m,m,m,j,m),B.e6,m,m,B.af,B.ar)
 n=A.yU(m,-1,m)
 n.P=new A.avt()
-return new A.vH(B.tz,"Universal BLE",A.p(p)+" ("+A.p(r)+")",k,"\xa9 2023 Navideck",A.b([B.on,q,B.on,A.TZ(m,m,m,B.bs,m,m,!0,m,A.dB(A.b([B.a_k,A.dB(m,m,m,m,m,n,m,m,m,s,"Hire us")],o),m,m,m,m,m,m,m,m,j,m),B.e6,m,m,B.af,B.ar)],t.p),m)},
+return new A.vH(B.tz,"UniversalBle Explorer",A.p(p)+" ("+A.p(r)+")",k,"\xa9 2023 Navideck",A.b([B.on,q,B.on,A.TZ(m,m,m,B.bs,m,m,!0,m,A.dB(A.b([B.a_l,A.dB(m,m,m,m,m,n,m,m,m,s,"Hire us")],o),m,m,m,m,m,m,m,m,j,m),B.e6,m,m,B.af,B.ar)],t.p),m)},
 $S:707}
 A.avs.prototype={
 $0(){A.aOS(A.fo("https://github.com/Navideck/universal-ble",0,null))},
@@ -109321,7 +109321,7 @@ $1(a){return this.a.aw8(this.b)},
 $S:8}
 A.VN.prototype={
 H(a){var s=null,r=A.uF(s,A.aPY(B.ay,s,s,B.eM),!0),q=A.uF(s,A.aPY(B.aE,s,s,B.eM),!0),p=this.c?new A.pT(s):B.VF
-return new A.G7(this.d,new A.Et(p,s,"Universal BLE",r,q,B.F4,s,!1,s),s)}}
+return new A.G7(this.d,new A.Et(p,s,"UniversalBle Explorer",r,q,B.F4,s,!1,s),s)}}
 A.Pp.prototype={
 H(a){var s,r,q=null,p=$.dk
 if(p==null){p=t.S
@@ -117141,8 +117141,8 @@ B.a_g=new A.bO(0,0)
 B.a_h=new A.Hx(null,null,null)
 B.a_i=new A.Hy(B.h,null)
 B.a_j=new A.eK(".",null,null,B.aK,null,null,null,null,null,null,null)
-B.a_k=new A.eK("Need help with your project? ",null,null,B.aK,null,null,null,null,null,null,null)
-B.a_l=new A.eK("Universal BLE is ",null,null,B.aK,null,null,null,null,null,null,null)
+B.a_k=new A.eK("UniversalBle Explorer is ",null,null,B.aK,null,null,null,null,null,null,null)
+B.a_l=new A.eK("Need help with your project? ",null,null,B.aK,null,null,null,null,null,null,null)
 B.kj=new A.x(!0,null,null,null,null,null,null,B.ao,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.i=new A.uz(0)
 B.a_T=new A.x(!1,B.iC,null,"CupertinoSystemText",null,null,17,null,null,-0.41,null,null,null,null,null,null,null,B.i,null,null,null,null,null,null,null,null)
