@@ -1,6 +1,6 @@
-Universal BLE
+UniversalBle Explorer
 
-Universal BLE is an open-source developer tool for exploring and testing Bluetooth Low Energy (BLE) devices. It empowers developers, engineers, and hobbyists to discover, connect, and debug BLE devices with a consistent cross-platform experience.
+UniversalBle Explorer is an open-source developer tool for exploring and testing Bluetooth Low Energy (BLE) devices. It empowers developers, engineers, and hobbyists to discover, connect, and debug BLE devices with a consistent cross-platform experience.
 
 Built on the universal_ble Flutter plugin (https://pub.dev/packages/universal_ble) — one of the most comprehensive cross-platform BLE solutions available.
 
@@ -9,7 +9,7 @@ Scanner app screenshot: assets/scanner-screenshot.png
 
 Download
 
-Universal BLE — [App Store](https://apps.apple.com/app/id6756538573) · [Play Store](https://play.google.com/store/apps/details?id=com.navideck.universalble) · [Web](https://navideck.github.io/UniversalBle-Explorer/)
+UniversalBle Explorer — [App Store](https://apps.apple.com/app/id6756538573) · [Play Store](https://play.google.com/store/apps/details?id=com.navideck.universalble) · [Web](https://navideck.github.io/UniversalBle-Explorer/)
 
 <a href="https://apps.apple.com/app/id6756538573"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store"></a>
 <a href="https://play.google.com/store/apps/details?id=com.navideck.universalble"><img src="assets/play-badge.svg" alt="Get it on Google Play" height="40"></a>
@@ -82,11 +82,11 @@ Perfect For
   QA teams validating BLE device functionality
 
 
-Why Universal BLE?
+Why UniversalBle Explorer?
 
-Universal BLE is built on the open-source universal_ble Flutter plugin (https://github.com/Navideck/universal_ble), one of the most comprehensive cross-platform BLE solutions available. With support for all major platforms and a unified API, you can develop and test BLE applications with confidence.
+UniversalBle Explorer is built on the open-source universal_ble Flutter plugin (https://github.com/Navideck/universal_ble), one of the most comprehensive cross-platform BLE solutions available. With support for all major platforms and a unified API, you can develop and test BLE applications with confidence.
 
-Whether you're developing a new BLE product, debugging an existing device, or simply exploring Bluetooth Low Energy, Universal BLE provides the tools you need.
+Whether you're developing a new BLE product, debugging an existing device, or simply exploring Bluetooth Low Energy, UniversalBle Explorer provides the tools you need.
 
 Open Source & Free
 
