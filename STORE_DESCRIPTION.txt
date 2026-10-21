@@ -1,14 +1,16 @@
-# UniversalBle Explorer — Store Description (1.2.0)
+UniversalBle Explorer — Store Description (1.2.0)
 
 Store-ready copy based on the 1.1.0 and 1.2.0 release notes.
 
-## Google Play
 
-### Short description (68/80 characters)
+GOOGLE PLAY
+
+Short description (68/80 characters)
 
 BLE scanner, GATT server, fingerprints and live logs for developers.
 
-### Full description (2,860/4,000 characters)
+
+Full description (2,860/4,000 characters)
 
 UniversalBle Explorer (formerly Universal BLE) is an open-source developer tool for discovering, connecting to and debugging Bluetooth Low Energy devices. Built on the universal_ble Flutter plugin, it offers a consistent experience across Android, iOS, macOS, Windows, Linux and the web.
 
@@ -66,16 +68,19 @@ POWER USER TOOLS
 BUILT FOR DEVELOPERS
 Whether you are building a BLE product, testing hardware, validating firmware or learning Bluetooth Low Energy, UniversalBle Explorer gives you the visibility and control you need. It is free, open source and built on the universal_ble plugin.
 
-## App Store
 
-### Subtitle (27/30 characters)
+APP STORE
+
+Subtitle (27/30 characters)
 
 BLE explorer, server & logs
 
-### Promotional text (153/170 characters)
+
+Promotional text (153/170 characters)
 
 Now with a full GATT server and one-tap device fingerprints. Explore, connect and debug BLE devices with live logs, filters and powerful developer tools.
 
-### Description (4,000 characters max)
+
+Description (4,000 characters max)
 
 Use the Google Play full description above; it fits the App Store limit as well.
