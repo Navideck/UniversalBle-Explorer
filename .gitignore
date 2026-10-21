@@ -30,3 +30,5 @@ migrate_working_dir/
 .packages
 .flutter-plugins-dependencies
 build/
+# Widget Preview related
+.widget_preview/
